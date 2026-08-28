@@ -48,6 +48,8 @@ import { addTenantParameterToResolvedShortLink } from './multitenancy/tenant_res
 import { ReadonlyService } from './readonly/readonly_service';
 import { DataSourcePluginSetup } from '../../../src/plugins/data_source/server/types';
 import { defineResourceAccessManagementRoutes } from './routes/resource_access_management_routes';
+import { defineApiTokenRoutes } from './routes/api-token-routes';
+import { registerLoginPageRoute } from './auth/login/login_page';
 
 export interface SecurityPluginRequestContext {
   logger: Logger;
@@ -111,9 +113,43 @@ export class SecurityPlugin implements Plugin<SecurityPluginSetup, SecurityPlugi
 
     this.securityClient = new SecurityClient(esClient);
 
-    const securitySessionStorageFactory: SessionStorageFactory<SecuritySessionCookie> = await core.http.createCookieSessionStorageFactory<
-      SecuritySessionCookie
-    >(getSecurityCookieOptions(config));
+    // Expose resource-sharing availability as a core capability so ANY plugin
+    // can gate UI (e.g. a "Share" table column) via
+    // `core.application.capabilities.resourceSharing?.enabled` and
+    // `...resourceSharing?.availableTypes` without taking a dependency on the
+    // security plugin. `availableTypes` is a comma-joined list of registered
+    // resource types (capabilities values must be primitives with stable types
+    // for the switcher merge to retain them).
+    core.capabilities.registerProvider(() => ({
+      resourceSharing: { enabled: false, availableTypes: '' },
+    }));
+    core.capabilities.registerSwitcher(async (request) => {
+      try {
+        const dashboardsInfo = await this.securityClient.dashboardsinfo(request);
+        if (!dashboardsInfo?.resource_sharing_enabled) {
+          return { resourceSharing: { enabled: false, availableTypes: '' } };
+        }
+        let availableTypes = '';
+        try {
+          const typesRes = await this.securityClient.listResourceTypes(request);
+          const types: Array<{ type: string }> = typesRes?.types ?? [];
+          availableTypes = types.map((t) => t.type).join(',');
+        } catch (e) {
+          // Feature reported enabled but types could not be listed; expose
+          // enabled with no types rather than failing capability resolution.
+        }
+        return { resourceSharing: { enabled: true, availableTypes } };
+      } catch (e) {
+        return { resourceSharing: { enabled: false, availableTypes: '' } };
+      }
+    });
+
+    const securitySessionStorageFactory: SessionStorageFactory<SecuritySessionCookie> =
+      await core.http.createCookieSessionStorageFactory<SecuritySessionCookie>(
+        getSecurityCookieOptions(config)
+      );
+
+    registerLoginPageRoute(core, config, securitySessionStorageFactory);
 
     // put logger into route handler context, so that we don't need to pass througth parameters
     core.http.registerRouteHandlerContext('security_plugin', (context, request) => {
@@ -147,6 +183,9 @@ export class SecurityPlugin implements Plugin<SecurityPluginSetup, SecurityPlugi
     defineRoutes(router, dataSourceEnabled);
     defineAuthTypeRoutes(router, config);
     defineResourceAccessManagementRoutes(router, dataSourceEnabled);
+    if (config.api_keys?.enabled) {
+      defineApiTokenRoutes(router);
+    }
 
     // set up multi-tenant routes
     if (config.multitenancy?.enabled) {
@@ -188,8 +227,8 @@ export class SecurityPlugin implements Plugin<SecurityPluginSetup, SecurityPlugi
     this.savedObjectClientWrapper.config = config;
 
     if (config.multitenancy?.enabled) {
-      const globalConfig$: Observable<SharedGlobalConfig> = this.initializerContext.config.legacy
-        .globalConfig$;
+      const globalConfig$: Observable<SharedGlobalConfig> =
+        this.initializerContext.config.legacy.globalConfig$;
       const globalConfig: SharedGlobalConfig = await globalConfig$.pipe(first()).toPromise();
       const opensearchDashboardsIndex = globalConfig.opensearchDashboards.index;
       const typeRegistry: ISavedObjectTypeRegistry = core.savedObjects.getTypeRegistry();

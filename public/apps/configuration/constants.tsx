@@ -29,6 +29,7 @@ export const API_ENDPOINT_AUDITLOGGING = API_ENDPOINT + '/audit';
 export const API_ENDPOINT_AUDITLOGGING_UPDATE = API_ENDPOINT_AUDITLOGGING + '/config';
 export const API_ENDPOINT_PERMISSIONS_INFO = API_PREFIX + '/restapiinfo';
 export const API_ENDPOINT_CACHE = API_ENDPOINT + '/cache';
+export const API_ENDPOINT_APITOKENS = API_PREFIX + '/apitokens';
 
 export const CLUSTER_PERMISSIONS: string[] = [
   'cluster:admin/component_template/delete',
@@ -460,6 +461,6 @@ export enum ToolTipContent {
 }
 
 export const MIN_NUMBER_OF_CHARS_IN_RESOURCE_NAME = 2;
-export const MAX_NUMBER_OF_CHARS_IN_RESOURCE_NAME = 50;
+export const MAX_NUMBER_OF_CHARS_IN_RESOURCE_NAME = 256;
 
 export const LIMIT_WIDTH_INPUT_CLASS = 'limit-width-input';

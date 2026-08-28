@@ -32,6 +32,7 @@ import { validateCurrentPassword } from '../../utils/login-utils';
 import {
   ANONYMOUS_AUTH_LOGIN,
   AuthType,
+  MAX_INPUT_LENGTH,
   OPENID_AUTH_LOGIN_WITH_FRAGMENT,
   SAML_AUTH_LOGIN_WITH_FRAGMENT,
 } from '../../../common';
@@ -77,7 +78,7 @@ export function getNextPath(serverBasePath: string) {
 
 function redirect(serverBasePath: string) {
   // navigate to nextUrl
-  window.location.href = getNextPath(serverBasePath);
+  window.location.assign(getNextPath(serverBasePath));
 }
 
 export function extractNextUrlFromWindowLocation(): string {
@@ -196,6 +197,7 @@ export function LoginPage(props: LoginPageDeps) {
                 aria-label="username_input"
                 placeholder="Username"
                 icon="user"
+                maxLength={MAX_INPUT_LENGTH}
                 onChange={(e) => setUsername(e.target.value)}
                 value={username}
                 isInvalid={usernameValidationFailed}
@@ -209,6 +211,7 @@ export function LoginPage(props: LoginPageDeps) {
                 aria-label="password_input"
                 placeholder="Password"
                 type="dual"
+                maxLength={MAX_INPUT_LENGTH}
                 onChange={(e) => setPassword(e.target.value)}
                 value={password}
                 isInvalid={usernameValidationFailed}

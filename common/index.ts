@@ -23,6 +23,7 @@ export const PLUGIN_PERMISSIONS_APP_ID = `${PLUGIN_NAME}_permissions`;
 export const PLUGIN_TENANTS_APP_ID = `${PLUGIN_NAME}_tenants`;
 export const PLUGIN_AUDITLOG_APP_ID = `${PLUGIN_NAME}_auditlog`;
 export const PLUGIN_RESOURCE_ACCESS_MANAGEMENT_APP_ID = `${PLUGIN_NAME}_resource_access_management`;
+export const PLUGIN_API_TOKENS_APP_ID = `${PLUGIN_NAME}_api_tokens`;
 
 export const APP_ID_LOGIN = 'login';
 export const APP_ID_CUSTOMERROR = 'customerror';
@@ -45,6 +46,7 @@ export const SAML_AUTH_LOGIN = '/auth/saml/login';
 export const SAML_AUTH_LOGIN_WITH_FRAGMENT = '/auth/saml/captureUrlFragment';
 export const ANONYMOUS_AUTH_LOGIN = '/auth/anonymous';
 export const AUTH_TYPE_PARAM = 'auth_type';
+export const AUTO_LOGIN_QUERY_PARAM = 'auto_login';
 
 export const OPENID_AUTH_LOGOUT = '/auth/openid/logout';
 export const SAML_AUTH_LOGOUT = '/auth/saml/logout';
@@ -63,6 +65,7 @@ export const PRIVATE_TENANT_RENDERING_TEXT = 'Private';
 export const globalTenantName = 'global_tenant';
 
 export const MAX_INTEGER = 2147483647;
+export const MAX_INPUT_LENGTH = 256;
 export const MAX_LENGTH_OF_COOKIE_BYTES = 4000;
 export const ESTIMATED_IRON_COOKIE_OVERHEAD = 1.5;
 
@@ -86,6 +89,7 @@ export enum ResourceType {
   tenantsConfigureTab = 'tenantsConfigureTab',
   auth = 'auth',
   auditLogging = 'auditLogging',
+  apiTokens = 'apiTokens',
 }
 
 /**

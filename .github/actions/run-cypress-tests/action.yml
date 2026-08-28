@@ -40,7 +40,7 @@ runs:
         download-location: ${{ env.PLUGIN_NAME }}
     
     - name: Run Opensearch with A Single Plugin
-      uses: derek-ho/start-opensearch@v9
+      uses: opensearch-project/opensearch-build/.github/actions/start-opensearch@643b632712710159088d5f0798de7e91c1f2b8f7
       with:
         opensearch-version: ${{ env.OPENSEARCH_VERSION }}
         plugins: "file:$(pwd)/opensearch-security.zip"
@@ -52,7 +52,7 @@ runs:
 
     # OSD bootstrap
     - name: Run Dashboard with Security Dashboards Plugin
-      uses: derek-ho/setup-opensearch-dashboards@v1
+      uses: opensearch-project/opensearch-build/.github/actions/setup-opensearch-dashboards@643b632712710159088d5f0798de7e91c1f2b8f7
       with:
         plugin_name: security-dashboards-plugin
         opensearch_dashboards_yml: ${{ inputs.dashboards_config_file }}
@@ -81,7 +81,7 @@ runs:
         if [ -z "${{ inputs.osd_base_path }}" ]; then
           nohup yarn start --no-base-path --no-watch --csp.warnLegacyBrowsers=false | tee dashboard.log &
         else
-          nohup yarn start --no-watch --csp.warnLegacyBrowsers=false | tee dashboard.log &
+          nohup yarn start --no-base-path --no-watch --csp.warnLegacyBrowsers=false | tee dashboard.log &
         fi
       shell: bash
 
@@ -91,13 +91,16 @@ runs:
       run: |
         cd ./OpenSearch-Dashboards
         echo "Start checking OpenSearch Dashboards."
-        for i in {1..6}; do
+        for i in {1..12}; do
           if grep -q "http server running" "dashboard.log"; then
             echo "OpenSearch Dashboards started successfully."
             break
           fi
-          if [ $i -eq 6 ]; then
-            echo "Timeout for 60 seconds reached. OpenSearch Dashboards did not start."
+          if [ $i -eq 12 ]; then
+            echo "Timeout for 120 seconds reached. OpenSearch Dashboards did not start."
+            echo "=== dashboard.log tail ==="
+            tail -100 dashboard.log || true
+            echo "=== end dashboard.log ==="
             exit 1
           fi
           sleep 10
@@ -105,11 +108,21 @@ runs:
       shell: bash
 
     - name: Run Cypress Tests with retry
-      uses: Wandalen/wretry.action@v3.3.0
-      with:
-        attempt_limit: 5
-        attempt_delay: 2000
-        command: |
-          cd ./OpenSearch-Dashboards/plugins/security-dashboards-plugin
-          yarn add cypress --save-dev
-          eval ${{ inputs.yarn_command }} 
+      run: |
+        cd ./OpenSearch-Dashboards/plugins/security-dashboards-plugin
+        yarn add cypress --save-dev
+
+        for attempt in {1..5}; do
+          echo "Running Cypress attempt ${attempt}/5."
+          if eval ${{ inputs.yarn_command }}; then
+            exit 0
+          fi
+
+          if [ "${attempt}" -eq 5 ]; then
+            echo "Cypress failed after ${attempt} attempts."
+            exit 1
+          fi
+
+          sleep 2
+        done
+      shell: bash

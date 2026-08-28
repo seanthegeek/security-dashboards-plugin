@@ -64,7 +64,7 @@ describe('test OpenId authHeaderValue', () => {
   // Consistent with auth_handler_factory.test.ts
   beforeEach(() => {});
 
-  const config = ({
+  const config = {
     openid: {
       header: 'authorization',
       scope: [],
@@ -73,7 +73,7 @@ describe('test OpenId authHeaderValue', () => {
         additional_cookies: 5,
       },
     },
-  } as unknown) as SecurityPluginConfigType;
+  } as unknown as SecurityPluginConfigType;
 
   const logger = {
     debug: (message: string) => {},
@@ -161,7 +161,7 @@ describe('test OpenId authHeaderValue', () => {
       },
     };
 
-    const openidConfig = (customConfig as unknown) as SecurityPluginConfigType;
+    const openidConfig = customConfig as unknown as SecurityPluginConfigType;
 
     const openIdAuthentication = new OpenIdAuthentication(
       openidConfig,
@@ -199,7 +199,7 @@ describe('test OpenId authHeaderValue', () => {
       },
     };
 
-    const openidConfig = (customConfig as unknown) as SecurityPluginConfigType;
+    const openidConfig = customConfig as unknown as SecurityPluginConfigType;
 
     const openIdAuthentication = new OpenIdAuthentication(
       openidConfig,
@@ -310,7 +310,7 @@ describe('test OpenId authHeaderValue', () => {
     });
 
     expect(await openIdAuthentication.isValidCookie(testCookie, {})).toBe(true);
-    expect(mockClient.post).toBeCalledTimes(1);
+    expect(mockClient.post).toHaveBeenCalledTimes(1);
     global.Date.now = realDateNow;
   });
 
@@ -356,7 +356,7 @@ describe('Test OpenID Unauthorized Flows', () => {
   // Consistent with auth_handler_factory.test.ts
   beforeEach(() => {});
 
-  const config = ({
+  const config = {
     cookie: {
       secure: false,
     },
@@ -368,7 +368,7 @@ describe('Test OpenID Unauthorized Flows', () => {
         additional_cookies: 5,
       },
     },
-  } as unknown) as SecurityPluginConfigType;
+  } as unknown as SecurityPluginConfigType;
 
   const logger = {
     debug: (message: string) => {},
@@ -421,7 +421,7 @@ describe('Test OpenID Unauthorized Flows', () => {
 
     openIdAuthentication.handleUnauthedRequest(osRequest, mockLifecycleFactory, authToolkit);
 
-    expect(mockLifecycleFactory.unauthorized).toBeCalledTimes(1);
+    expect(mockLifecycleFactory.unauthorized).toHaveBeenCalledTimes(1);
   });
 
   test('Ensure request without path redirects to default route', () => {
@@ -543,6 +543,38 @@ describe('Test OpenID Unauthorized Flows', () => {
       location: `/auth/openid/captureUrlFragment?nextUrl=${escape(
         '/app/dashboards?security_tenant=testing'
       )}`,
+      'set-cookie':
+        'security_authentication=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Path=/',
+    });
+  });
+
+  test('Ensure auto_login=false redirects to login page instead of auto redirecting to OIDC', () => {
+    const mockCore = coreMock.createSetup();
+    const openIdAuthentication = new OpenIdAuthentication(
+      config,
+      sessionStorageFactory,
+      router,
+      esClient,
+      mockCore,
+      logger
+    );
+
+    const mockRequest = httpServerMock.createRawRequest({
+      url: {
+        pathname: '/app/dashboards',
+        search: 'auto_login=false',
+      },
+    });
+    const osRequest = OpenSearchDashboardsRequest.from(mockRequest);
+
+    const mockLifecycleFactory = httpServerMock.createLifecycleResponseFactory();
+
+    const authToolKitSpy = jest.spyOn(authToolkit, 'redirected');
+
+    openIdAuthentication.handleUnauthedRequest(osRequest, mockLifecycleFactory, authToolkit);
+
+    expect(authToolKitSpy).toHaveBeenCalledWith({
+      location: '/app/login?nextUrl=%2Fapp%2Fdashboards%3Fauto_login%3Dfalse&auto_login=false',
       'set-cookie':
         'security_authentication=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Path=/',
     });

@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:  
       - name: Checkout Branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
 
       - name: Set env
         run: |
@@ -38,7 +38,7 @@ jobs:
           download-location: ${{ env.PLUGIN_NAME }}
 
       - name: Run Opensearch with security
-        uses: derek-ho/start-opensearch@v9
+        uses: opensearch-project/opensearch-build/.github/actions/start-opensearch@3d9a524bbfc8128d96113cc578b462153f2ea8d4
         with:
           opensearch-version: ${{ env.OPENSEARCH_VERSION }}
           plugins: "file:$(pwd)/${{ env.PLUGIN_NAME }}.zip"
@@ -67,7 +67,7 @@ jobs:
 
       - name: Run Dashboard with Security Dashboards Plugin
         id: setup-dashboards
-        uses: derek-ho/setup-opensearch-dashboards@v3
+        uses: opensearch-project/opensearch-build/.github/actions/setup-opensearch-dashboards@3d9a524bbfc8128d96113cc578b462153f2ea8d4
         with:
           plugin_name: security-dashboards-plugin
           built_plugin_name: security-dashboards
@@ -84,4 +84,3 @@ jobs:
         run: |
           timeout 300 bash -c 'while [[ "$(curl -u admin:${{ env.OPENSEARCH_INITIAL_ADMIN_PASSWORD }} -k http://localhost:5601/api/status | jq -r '.status.overall.state')" != "green" ]]; do sleep 5; done'
         shell: bash
-

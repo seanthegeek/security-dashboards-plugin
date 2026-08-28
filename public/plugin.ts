@@ -37,6 +37,7 @@ import {
   LOGIN_PAGE_URI,
   PLUGIN_AUDITLOG_APP_ID,
   PLUGIN_AUTH_APP_ID,
+  PLUGIN_API_TOKENS_APP_ID,
   PLUGIN_GET_STARTED_APP_ID,
   PLUGIN_NAME,
   PLUGIN_PERMISSIONS_APP_ID,
@@ -65,6 +66,8 @@ import {
   SecurityPluginSetupDependencies,
 } from './types';
 import { addTenantToShareURL } from './services/shared-link';
+import { createShareButton } from './apps/resource-sharing/share-button-embeddable';
+import { startShareButtonDomSpi } from './apps/resource-sharing/share-button-dom-spi';
 import { interceptError } from './utils/logout-utils';
 import { tenantColumn, getNamespacesToRegister } from './apps/configuration/utils/tenant-utils';
 import { getDashboardsInfoSafe } from './utils/dashboards-info-utils';
@@ -104,7 +107,13 @@ const APP_ID_DATA_EXPLORER = 'data-explorer';
 const APP_ID_VISUALIZE = 'visualize';
 // OpenSearchDashboards app is for legacy url migration
 const APP_ID_OPENSEARCH_DASHBOARDS = 'kibana';
-const APP_LIST_FOR_READONLY_ROLE = [APP_ID_HOME, APP_ID_DASHBOARDS, APP_ID_OPENSEARCH_DASHBOARDS];
+const APP_ID_OVERVIEW = 'opensearch_dashboards_overview';
+const APP_LIST_FOR_READONLY_ROLE = [
+  APP_ID_HOME,
+  APP_ID_DASHBOARDS,
+  APP_ID_OPENSEARCH_DASHBOARDS,
+  APP_ID_OVERVIEW,
+];
 
 const dataAccessUsersCategory: AppCategory & { group?: AppCategory } = {
   id: 'dataAccessAndUsers',
@@ -113,16 +122,17 @@ const dataAccessUsersCategory: AppCategory & { group?: AppCategory } = {
   euiIconType: 'managementApp',
 };
 
-export class SecurityPlugin
-  implements
-    Plugin<
-      SecurityPluginSetup,
-      SecurityPluginStart,
-      SecurityPluginSetupDependencies,
-      SecurityPluginStartDependencies
-    > {
+export class SecurityPlugin implements Plugin<
+  SecurityPluginSetup,
+  SecurityPluginStart,
+  SecurityPluginSetupDependencies,
+  SecurityPluginStartDependencies
+> {
   // @ts-ignore : initializerContext not used
   constructor(private readonly initializerContext: PluginInitializerContext) {}
+
+  /** Set during setup() from dashboardsinfo; used to gate the embeddable ShareButton in start(). */
+  private resourceSharingEnabled: boolean = false;
 
   private updateDefaultRouteOfSecurityApplications: AppUpdater = () => {
     const url = getDataSourceEnabledUrl(getDataSourceFromUrl());
@@ -146,6 +156,7 @@ export class SecurityPlugin
     const dashboardsInfo = await getDashboardsInfoSafe(core.http);
     const multitenancyEnabled = dashboardsInfo?.multitenancy_enabled;
     const resourceSharingEnabled = dashboardsInfo?.resource_sharing_enabled;
+    this.resourceSharingEnabled = !!resourceSharingEnabled;
     const isReadonly = accountInfo?.roles.some((role) =>
       (config.readonly_mode?.roles || DEFAULT_READONLY_ROLES).includes(role)
     );
@@ -310,6 +321,19 @@ export class SecurityPlugin
             },
           });
         }
+
+        if (config.api_keys?.enabled) {
+          core.application.register({
+            id: PLUGIN_API_TOKENS_APP_ID,
+            title: 'API Keys',
+            order: 8050,
+            workspaceAvailability: WorkspaceAvailability.outsideWorkspace,
+            updater$: this.appStateUpdater,
+            mount: async (params: AppMountParameters) => {
+              return mountWrapper(params, '/apiTokens');
+            },
+          });
+        }
       }
 
       core.chrome.navGroup.addNavLinksToGroup(DEFAULT_NAV_GROUPS.dataAdministration, [
@@ -354,6 +378,15 @@ export class SecurityPlugin
                 id: PLUGIN_RESOURCE_ACCESS_MANAGEMENT_APP_ID,
                 category: dataAccessUsersCategory,
                 order: 800,
+              },
+            ]
+          : []),
+        ...(config.api_keys?.enabled
+          ? [
+              {
+                id: PLUGIN_API_TOKENS_APP_ID,
+                category: dataAccessUsersCategory,
+                order: 900,
               },
             ]
           : []),
@@ -429,9 +462,8 @@ export class SecurityPlugin
         updater$: this.appStateUpdater,
         // IMPORTANT: do NOT set chromeless: true (that hides the left nav)
         mount: async (params: AppMountParameters) => {
-          const { renderApp } = await import(
-            './apps/resource-sharing/resource-access-management-app'
-          );
+          const { renderApp } =
+            await import('./apps/resource-sharing/resource-access-management-app');
           const [coreStart, depsStart] = await core.getStartServices();
           return renderApp(
             coreStart,
@@ -467,7 +499,7 @@ export class SecurityPlugin
       config.multitenancy.enable_aggregation_view
     ) {
       deps.savedObjectsManagement.columns.register(
-        (tenantColumn as unknown) as SavedObjectsManagementColumn<string>
+        tenantColumn as unknown as SavedObjectsManagementColumn<string>
       );
       if (!!accountInfo) {
         const namespacesToRegister = getNamespacesToRegister(accountInfo);
@@ -497,7 +529,18 @@ export class SecurityPlugin
     if (config.multitenancy.enabled) {
       addTenantToShareURL(core);
     }
-    return {};
+
+    // DOM-marker SPI: any plugin can render a `data-resource-share-button`
+    // marker element and the centralized share button mounts into it.
+    if (this.resourceSharingEnabled) {
+      startShareButtonDomSpi(core);
+    }
+
+    return {
+      ui: {
+        ShareButton: createShareButton(core, this.resourceSharingEnabled),
+      },
+    };
   }
 
   public stop() {}

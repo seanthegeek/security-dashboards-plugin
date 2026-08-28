@@ -179,8 +179,7 @@ export abstract class AuthenticationType implements IAuthenticationType {
         // return 401 if no tenant available
         if (!isValidTenant(tenant)) {
           return response.badRequest({
-            body:
-              'No available tenant for current user, please reach out to your system administrator',
+            body: 'No available tenant for current user, please reach out to your system administrator',
           });
         }
         authState.selectedTenant = tenant;
@@ -273,7 +272,8 @@ export abstract class AuthenticationType implements IAuthenticationType {
       privateTenantEnabled: dashboardsInfo.private_tenant_enabled,
       defaultTenant: dashboardsInfo.default_tenant,
       preferredTenants:
-        dashboardsInfo.preferred_tenants ?? this.config.multitenancy?.tenants.preferred,
+        (dashboardsInfo.preferred_tenants?.length ? dashboardsInfo.preferred_tenants : null) ??
+        this.config.multitenancy?.tenants.preferred,
     });
   }
 

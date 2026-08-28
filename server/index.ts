@@ -114,6 +114,7 @@ export const configSchema = schema.object({
       ],
       { defaultValue: '' }
     ),
+    default_redirect_auth_type: schema.maybe(schema.string()),
     anonymous_auth_enabled: schema.boolean({ defaultValue: false }),
     unauthenticated_routes: schema.arrayOf(schema.string(), {
       defaultValue: ['/api/reporting/stats'],
@@ -293,6 +294,9 @@ export const configSchema = schema.object({
   resource_sharing: schema.object({
     enabled: schema.boolean({ defaultValue: false }),
   }),
+  api_keys: schema.object({
+    enabled: schema.boolean({ defaultValue: false }),
+  }),
 });
 
 export type SecurityPluginConfigType = TypeOf<typeof configSchema>;
@@ -308,6 +312,7 @@ export const config: PluginConfigDescriptor<SecurityPluginConfigType> = {
     indexPermissions: true,
     disabledTransportCategories: true,
     disabledRestCategories: true,
+    api_keys: true,
   },
   schema: configSchema,
   deprecations: ({ rename, unused }) => [

@@ -28,14 +28,12 @@ export function interceptError(logoutUrl: string, thisWindow: Window): any {
       setShouldShowTenantPopup(null);
       // Clear everything in the sessionStorage since they can contain sensitive information
       sessionStorage.clear();
-      if (
-        !(
-          thisWindow.location.pathname.toLowerCase().includes(LOGIN_PAGE_URI) ||
-          thisWindow.location.pathname.toLowerCase().includes(CUSTOM_ERROR_PAGE_URI)
-        )
-      ) {
+      if (!(
+        thisWindow.location.pathname.toLowerCase().includes(LOGIN_PAGE_URI) ||
+        thisWindow.location.pathname.toLowerCase().includes(CUSTOM_ERROR_PAGE_URI)
+      )) {
         if (logoutUrl) {
-          thisWindow.location.href = logoutUrl;
+          thisWindow.location.assign(logoutUrl);
         } else {
           // when session timed out, user credentials in cookie are wiped out
           // refres the page will direct the user to go through login process

@@ -13,6 +13,7 @@
  *   permissions and limitations under the License.
  */
 
+import type React from 'react';
 import { NavigationPublicPluginStart } from '../../../src/plugins/navigation/public';
 import {
   SavedObjectsManagementPluginSetup,
@@ -21,11 +22,25 @@ import {
 import { ManagementOverViewPluginSetup } from '../../../src/plugins/management_overview/public';
 import { DataSourcePluginStart } from '../../../src/plugins/data_source/public/types';
 import { DataSourceManagementPluginSetup } from '../../../src/plugins/data_source_management/public';
+import type { ResourceShareButtonProps } from './apps/resource-sharing/share-button-embeddable';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface SecurityPluginSetup {}
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface SecurityPluginStart {}
+
+export interface SecurityPluginStart {
+  ui: {
+    /**
+     * Embeddable share button (+ modal) for a single resource protected by the
+     * resource-sharing framework. Renders nothing when resource sharing is
+     * disabled on the cluster or the resource type is not registered.
+     *
+     * Consumer plugins should declare `securityDashboards` as an optional
+     * plugin dependency and render:
+     * `<securityDashboards.ui.ShareButton resourceId={id} resourceType={type} />`
+     */
+    ShareButton: React.ComponentType<ResourceShareButtonProps>;
+  };
+}
 
 export interface SecurityPluginSetupDependencies {
   savedObjectsManagement: SavedObjectsManagementPluginSetup;
@@ -58,6 +73,8 @@ export interface DashboardsInfo {
   default_tenant: string;
   password_validation_error_message: string;
   resource_sharing_enabled?: boolean;
+  api_tokens_enabled?: boolean;
+  max_duration_seconds?: number;
 }
 
 export interface ClientConfigType {
@@ -127,6 +144,9 @@ export interface ClientConfigType {
   };
   disabledRestCategories: {
     exclude: string[];
+  };
+  api_keys: {
+    enabled: boolean;
   };
 }
 
